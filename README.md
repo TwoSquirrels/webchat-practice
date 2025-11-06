@@ -88,4 +88,3 @@ pnpm run build:backend
 ## 今後の予定
 
 - WebSocket によるリアルタイムチャット機能の実装
-

@@ -9,9 +9,21 @@
     "dev:frontend": "pnpm --filter frontend dev",
     "dev:backend": "pnpm --filter backend dev",
     "build:frontend": "pnpm --filter frontend build",
-    "build:backend": "pnpm --filter backend build"
+    "build:backend": "pnpm --filter backend build",
+    "format": "prettier --write ."
   },
-  "keywords": ["monorepo", "pnpm", "nextjs", "hono", "websocket", "chat"],
+  "keywords": [
+    "monorepo",
+    "pnpm",
+    "nextjs",
+    "hono",
+    "websocket",
+    "chat"
+  ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  },
+  "packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd"
 }
