@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
-import type { WebSocket } from "ws";
+import WebSocket from "ws";
 
 const app = new Hono();
 
@@ -39,8 +39,7 @@ app.get(
 
       // すべてのクライアントにメッセージをブロードキャスト
       clients.forEach((client) => {
-        if (client.readyState === 1) {
-          // WebSocket.OPEN = 1
+        if (client.readyState === WebSocket.OPEN) {
           client.send(message);
         }
       });
