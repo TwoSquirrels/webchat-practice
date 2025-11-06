@@ -15,7 +15,7 @@ app.get('/api/health', (c) => {
   return c.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-const port = 3001
+const port = Number(process.env.PORT) || 3001
 console.log(`Server is running on port ${port}`)
 
 serve({
