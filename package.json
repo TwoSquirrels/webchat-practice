@@ -1,0 +1,17 @@
+{
+  "name": "webchat-practice",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WebSocket chat service practice with pnpm workspaces",
+  "scripts": {
+    "dev": "pnpm --parallel run dev",
+    "build": "pnpm --recursive run build",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:backend": "pnpm --filter backend dev",
+    "build:frontend": "pnpm --filter frontend build",
+    "build:backend": "pnpm --filter backend build"
+  },
+  "keywords": ["monorepo", "pnpm", "nextjs", "hono", "websocket", "chat"],
+  "author": "",
+  "license": "MIT"
+}
