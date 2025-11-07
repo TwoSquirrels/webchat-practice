@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useWebSocket from "react-use-websocket";
 
@@ -17,31 +17,35 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ name: string } | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
-  // トークンとユーザー情報を取得
-  const getToken = () => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("token");
-  };
-
-  const getUserInfo = () => {
-    if (typeof window === "undefined") return null;
+  // クライアントサイドでのみ実行
+  useEffect(() => {
+    setIsClient(true);
+    const storedToken = localStorage.getItem("token");
+    if (!storedToken) {
+      router.push("/login");
+      return;
+    }
+    setToken(storedToken);
+    
     const userStr = localStorage.getItem("user");
-    return userStr ? JSON.parse(userStr) : null;
-  };
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setCurrentUser({ name: user.name || user.email });
+    }
+  }, [router]);
 
   // WebSocket接続
   const { sendJsonMessage, readyState } = useWebSocket(
-    "ws://localhost:3001/ws",
+    token ? "ws://localhost:3001/ws" : null,
     {
       onOpen: () => {
         console.log("WebSocket connected");
         // 認証トークンを送信
-        const token = getToken();
         if (token) {
           sendJsonMessage({ type: "auth", token });
-        } else {
-          router.push("/login");
         }
       },
       onMessage: (event) => {
@@ -50,12 +54,16 @@ export default function ChatPage() {
           
           if (data.type === "auth_success") {
             setAuthenticated(true);
-            setCurrentUser(data.user);
+            if (data.user?.name) {
+              setCurrentUser({ name: data.user.name });
+            }
           } else if (data.type === "message") {
             setMessages((prev) => [...prev, data]);
           } else if (data.type === "error") {
             console.error("WebSocket error:", data.message);
             if (data.message.includes("token") || data.message.includes("authenticated")) {
+              localStorage.removeItem("token");
+              localStorage.removeItem("user");
               router.push("/login");
             }
           }
@@ -88,9 +96,8 @@ export default function ChatPage() {
     router.push("/login");
   };
 
-  // 認証チェック（ログインページへのリダイレクト）
-  if (typeof window !== "undefined" && !getToken()) {
-    router.push("/login");
+  // クライアントサイドでない場合は何も表示しない
+  if (!isClient) {
     return null;
   }
 

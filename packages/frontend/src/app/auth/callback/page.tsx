@@ -1,53 +1,53 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef } from "react";
 
 function CallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const code = searchParams.get("code");
+  const processed = useRef(false);
 
-  // React 19以前の方法で、イベントハンドラ内で非同期処理を実行
-  const handleAuth = async () => {
-    if (!code) {
-      router.push("/login");
-      return;
-    }
+  useEffect(() => {
+    if (processed.current) return;
+    processed.current = true;
 
-    try {
-      const response = await fetch("http://localhost:3001/auth/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ code }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to authenticate");
+    const handleAuth = async () => {
+      if (!code) {
+        router.push("/login");
+        return;
       }
 
-      const data = await response.json();
-      
-      // トークンとユーザー情報をlocalStorageに保存
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      
-      // チャットページにリダイレクト
-      router.push("/chat");
-    } catch (error) {
-      console.error("Authentication error:", error);
-      router.push("/login");
-    }
-  };
+      try {
+        const response = await fetch("http://localhost:3001/auth/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ code }),
+        });
 
-  // コンポーネントマウント時に認証処理を実行（useEffectの代わり）
-  // React 19ではuseEffectの代わりにこのパターンを使用可能
-  if (typeof window !== "undefined" && !sessionStorage.getItem("auth_processed")) {
-    sessionStorage.setItem("auth_processed", "true");
+        if (!response.ok) {
+          throw new Error("Failed to authenticate");
+        }
+
+        const data = await response.json();
+        
+        // トークンとユーザー情報をlocalStorageに保存
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        
+        // チャットページにリダイレクト
+        router.push("/chat");
+      } catch (error) {
+        console.error("Authentication error:", error);
+        router.push("/login");
+      }
+    };
+
     handleAuth();
-  }
+  }, [code, router]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
