@@ -9,7 +9,7 @@ export default function Home() {
 
   useEffect(() => {
     // WebSocket接続
-    const ws = new WebSocket("ws://localhost:3001");
+    const ws = new WebSocket("ws://localhost:3001/ws");
     wsRef.current = ws;
 
     ws.onopen = () => {
