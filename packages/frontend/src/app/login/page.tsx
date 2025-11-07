@@ -45,7 +45,7 @@ export default function LoginPage() {
           <h2 className="text-2xl font-semibold mb-4 text-center">
             モックGoogle認証
           </h2>
-          
+
           {mockUsers.length === 0 ? (
             <button
               onClick={handleLoadUsers}

@@ -29,7 +29,7 @@ export default function ChatPage() {
       return;
     }
     setToken(storedToken);
-    
+
     const userStr = localStorage.getItem("user");
     if (userStr) {
       const user = JSON.parse(userStr);
@@ -51,7 +51,7 @@ export default function ChatPage() {
       onMessage: (event) => {
         try {
           const data = JSON.parse(event.data);
-          
+
           if (data.type === "auth_success") {
             setAuthenticated(true);
             if (data.user?.name) {
@@ -61,7 +61,10 @@ export default function ChatPage() {
             setMessages((prev) => [...prev, data]);
           } else if (data.type === "error") {
             console.error("WebSocket error:", data.message);
-            if (data.message.includes("token") || data.message.includes("authenticated")) {
+            if (
+              data.message.includes("token") ||
+              data.message.includes("authenticated")
+            ) {
               localStorage.removeItem("token");
               localStorage.removeItem("user");
               router.push("/login");
@@ -131,16 +134,19 @@ export default function ChatPage() {
         {/* チャットUI */}
         <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-6">
           <h2 className="text-2xl font-semibold mb-4">チャット</h2>
-          
+
           {!authenticated && (
             <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900 rounded text-center">
               認証中...
             </div>
           )}
-          
+
           <div className="h-96 overflow-y-auto bg-white dark:bg-gray-700 rounded p-4 mb-4">
             {messages.map((msg, index) => (
-              <div key={index} className="mb-3 p-2 border-b border-gray-200 dark:border-gray-600">
+              <div
+                key={index}
+                className="mb-3 p-2 border-b border-gray-200 dark:border-gray-600"
+              >
                 <div className="flex justify-between items-start">
                   <span className="font-semibold text-blue-600 dark:text-blue-400">
                     {msg.user}
@@ -155,7 +161,7 @@ export default function ChatPage() {
               </div>
             ))}
           </div>
-          
+
           <div className="flex">
             <input
               type="text"

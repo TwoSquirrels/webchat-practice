@@ -39,9 +39,12 @@ npm install -g pnpm
 # 依存関係をインストール
 pnpm install
 
+# 環境変数ファイルをコピー（初回のみ）
+cp packages/backend/.env.example packages/backend/.env
+
 # Prisma マイグレーションを実行（初回のみ）
 cd packages/backend
-npx prisma migrate dev
+pnpm prisma migrate dev
 cd ../..
 ```
 
@@ -112,6 +115,7 @@ pnpm run build:backend
 ## 使い方
 
 1. **アプリケーションを起動**
+
    ```bash
    pnpm run dev
    ```

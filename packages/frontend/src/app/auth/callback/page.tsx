@@ -33,11 +33,11 @@ function CallbackContent() {
         }
 
         const data = await response.json();
-        
+
         // トークンとユーザー情報をlocalStorageに保存
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
-        
+
         // チャットページにリダイレクト
         router.push("/chat");
       } catch (error) {
@@ -52,9 +52,7 @@ function CallbackContent() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <div className="z-10 max-w-2xl w-full items-center justify-center font-mono text-sm">
-        <h1 className="text-2xl font-bold text-center mb-4">
-          認証中...
-        </h1>
+        <h1 className="text-2xl font-bold text-center mb-4">認証中...</h1>
         <p className="text-center text-gray-600 dark:text-gray-400">
           しばらくお待ちください
         </p>
@@ -65,15 +63,17 @@ function CallbackContent() {
 
 export default function CallbackPage() {
   return (
-    <Suspense fallback={
-      <main className="flex min-h-screen flex-col items-center justify-center p-24">
-        <div className="z-10 max-w-2xl w-full items-center justify-center font-mono text-sm">
-          <h1 className="text-2xl font-bold text-center mb-4">
-            読み込み中...
-          </h1>
-        </div>
-      </main>
-    }>
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen flex-col items-center justify-center p-24">
+          <div className="z-10 max-w-2xl w-full items-center justify-center font-mono text-sm">
+            <h1 className="text-2xl font-bold text-center mb-4">
+              読み込み中...
+            </h1>
+          </div>
+        </main>
+      }
+    >
       <CallbackContent />
     </Suspense>
   );

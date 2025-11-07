@@ -42,12 +42,12 @@ export function generateAuthCode(userIndex: number = 0): string {
   const code = uuidv4();
   const user = mockUsers[userIndex % mockUsers.length];
   authCodes.set(code, user);
-  
+
   // 有効期限後に自動削除
   setTimeout(() => {
     authCodes.delete(code);
   }, AUTH_CODE_EXPIRY_MS);
-  
+
   return code;
 }
 
