@@ -34,8 +34,8 @@ const mockUsers: MockGoogleUser[] = [
 // 認証コードとユーザーのマッピング（一時的に保持）
 const authCodes = new Map<string, MockGoogleUser>();
 
-// 認証コードの有効期限（5分）
-const AUTH_CODE_EXPIRY_MS = 5 * 60 * 1000;
+// 認証コードの有効期限（15分）
+const AUTH_CODE_EXPIRY_MS = 15 * 60 * 1000;
 
 // 認証コードを生成してユーザーにマッピング
 export function generateAuthCode(userIndex: number = 0): string {

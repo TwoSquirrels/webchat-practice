@@ -5,11 +5,14 @@
   "description": "WebSocket chat service practice with pnpm workspaces",
   "scripts": {
     "dev": "pnpm --parallel run dev",
-    "build": "pnpm --recursive run build",
     "dev:frontend": "pnpm --filter frontend dev",
     "dev:backend": "pnpm --filter backend dev",
+    "build": "pnpm --recursive run build",
     "build:frontend": "pnpm --filter frontend build",
     "build:backend": "pnpm --filter backend build",
+    "preview": "pnpm --parallel run preview",
+    "preview:frontend": "pnpm --filter frontend preview",
+    "preview:backend": "pnpm --filter backend preview",
     "format": "prettier --write ."
   },
   "keywords": [

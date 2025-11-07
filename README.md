@@ -1,13 +1,15 @@
-# webchat-practice
+# WebChat Practice
 
-WebSocket によるチャットサービスの練習用
+WebSocket によるリアルタイムチャットサービスの学習用プロジェクトです。
+
+モック Google OAuth 認証、WebSocket によるリアルタイム通信、JWT トークンベースのセッション管理を実装しており、SSG (Static Site Generation) で完全に対応したフロントエンドと、Hono + TypeScript のバックエンドで構成されています。
 
 ## 技術スタック
 
-- **Frontend**: Next.js + TypeScript + Tailwind CSS
-- **Backend**: Hono + TypeScript
-- **Database**: SQLite (Prisma)
-- **Auth**: JWT + Mock Google OAuth
+- **Frontend**: Next.js (SSG) + TypeScript + Tailwind CSS + React Suspense
+- **Backend**: Hono + TypeScript + WebSocket
+- **Database**: SQLite + Prisma ORM
+- **Authentication**: JWT + Mock Google OAuth
 - **WebSocket**: @hono/node-ws
 - **Package Manager**: pnpm workspaces
 
@@ -17,11 +19,24 @@ WebSocket によるチャットサービスの練習用
 .
 ├── packages/
 │   ├── frontend/    # Next.js SSG フロントエンド
-│   └── backend/     # Hono バックエンド API
+│   └── backend/     # Hono WebSocket バックエンド
+├── CONTRIBUTING.md  # 開発ガイド
 ├── package.json
 ├── pnpm-workspace.yaml
 └── README.md
 ```
+
+## 開発について
+
+このプロジェクトの開発原則、アーキテクチャ、コード規約については **[CONTRIBUTING.md](./CONTRIBUTING.md)** をご覧ください。
+
+特に以下の内容が記載されています：
+
+- **開発方針**: Suspense の活用、副作用の最小化、SSG 互換性
+- **アーキテクチャ**: フロントエンド・バックエンドの構成図
+- **コード規約**: ファイル命名規則、コンポーネント構造、型定義
+- **重要な設計決定**: SSG 環境での実装上の注意点
+- **認証フロー・チャットフロー**: 詳細な処理フロー
 
 ## セットアップ
 
@@ -56,21 +71,19 @@ cd ../..
 pnpm run dev
 ```
 
+フロントエンドは http://localhost:3000 、バックエンドは http://localhost:3001 で起動します。
+
 ### フロントエンドのみを起動
 
 ```bash
 pnpm run dev:frontend
 ```
 
-フロントエンドは http://localhost:3000 で起動します。
-
 ### バックエンドのみを起動
 
 ```bash
 pnpm run dev:backend
 ```
-
-バックエンドは http://localhost:3001 で起動します。
 
 ## ビルド
 
@@ -80,37 +93,44 @@ pnpm run dev:backend
 pnpm run build
 ```
 
-### フロントエンドのみをビルド
+### フロントエンドをビルド（SSG）
 
 ```bash
 pnpm run build:frontend
 ```
 
-ビルド済みの静的ファイルは `packages/frontend/out/` に出力されます。
+静的ファイルは `packages/frontend/out/` に出力されます。SSG により完全な静的サイトとして生成され、Vercel、Netlify、GitHub Pages など、任意の静的ホスティングサービスにデプロイ可能です。
 
-### バックエンドのみをビルド
+### バックエンドをビルド
 
 ```bash
 pnpm run build:backend
 ```
 
-ビルド済みの JavaScript ファイルは `packages/backend/dist/` に出力されます。
+JavaScript ファイルは `packages/backend/dist/` に出力されます。
 
 ## 機能
 
 ### 認証システム
 
-- **モック Google OAuth 認証**: 実際の Google API を使用せず、モックサーバーで OAuth フローを再現
+- **モック Google OAuth**: 実際の Google API を使用せず、モックサーバーで OAuth フローを再現
 - **テストユーザー**: 3 人のテストユーザーが用意されており、ログイン時に選択可能
 - **JWT トークン**: セッション管理に JWT を使用（有効期限 7 日間）
-- **SQLite データベース**: ユーザー情報を SQLite データベースに保存
+- **SQLite データベース**: ユーザー情報を Prisma を通じて管理
 - **シームレスなログイン**: アカウント作成とログインが同じ操作で完了
 
 ### チャット機能
 
 - **WebSocket リアルタイムチャット**: 認証済みユーザー間でリアルタイムメッセージング
-- **ユーザー識別**: メッセージに送信者の名前とタイムスタンプを表示
+- **ユーザー識別**: メッセージに送信者の名前とタイムスタンプを付与
 - **認証保護**: WebSocket 接続は JWT トークンで認証
+
+### フロントエンド
+
+- **SSG (Static Site Generation)**: 完全な静的サイトとしてビルド
+- **React Suspense**: ローディング状態を宣言的に管理
+- **クライアント専用 API**: `useSearchParams()` などはすべて Client Component に封じ込め
+- **localStorage**: JWT トークンをブラウザに安全に保存
 
 ## 使い方
 
@@ -123,15 +143,18 @@ pnpm run build:backend
 2. **ログイン**
    - ブラウザで http://localhost:3000 にアクセス
    - 「ログインする」ボタンをクリック
-   - テストユーザーを選択（例: テストユーザー1）
+   - テストユーザーを選択 (例: テストユーザー1)
 
-3. **チャット**
+3. **チャット開始**
    - 自動的にチャットページにリダイレクトされます
    - メッセージ入力欄にテキストを入力して「送信」をクリック
-   - 複数のブラウザウィンドウで異なるユーザーでログインして、リアルタイムチャットをテスト可能
 
-4. **ログアウト**
-   - 右上の「ログアウト」ボタンをクリック
+4. **複数ユーザーでテスト**
+   - 別のブラウザウィンドウで異なるユーザーでログイン
+   - リアルタイムチャットをテスト可能
+
+5. **ログアウト**
+   - チャットページの「ログアウト」ボタンをクリック
 
 ## データベース
 
@@ -139,8 +162,8 @@ pnpm run build:backend
 
 ### データベースファイル
 
-- データベースファイルは `packages/backend/prisma/chat.db` に作成されます
-- マイグレーションファイルは `packages/backend/prisma/migrations/` に保存されます
+- データベースファイル: `packages/backend/prisma/chat.db`
+- マイグレーション: `packages/backend/prisma/migrations/`
 
 ### Prisma コマンド
 
@@ -174,9 +197,10 @@ model User {
 }
 ```
 
-## 今後の予定
+## ライセンス
 
-- ~~WebSocket によるリアルタイムチャット機能の実装~~ ✅
-- ~~アカウントシステムの実装~~ ✅
-- チャットルーム機能
-- メッセージ履歴の永続化
+このプロジェクトは [MIT License](./LICENSE) の下でライセンスされています。
+
+## コントリビューション
+
+プロジェクトへのコントリビューション方法については、**[CONTRIBUTING.md](./CONTRIBUTING.md)** をご参照ください。
