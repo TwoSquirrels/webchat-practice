@@ -1,8 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 
-// Prisma Clientのシングルトンインスタンス
+/**
+ * Prisma Client シングルトンインスタンス
+ */
 const prisma = new PrismaClient();
 
+/**
+ * ユーザー情報
+ */
 export interface User {
   id: string;
   googleId: string;
@@ -13,29 +18,36 @@ export interface User {
   lastLoginAt: Date;
 }
 
-// ユーザーをGoogle IDで検索
+/**
+ * Google ID からユーザーを検索
+ */
 export async function findUserByGoogleId(
-  googleId: string,
+  googleId: string
 ): Promise<User | null> {
   return await prisma.user.findUnique({
     where: { googleId },
   });
 }
 
-// ユーザーをIDで検索
+/**
+ * ユーザー ID からユーザーを検索
+ */
 export async function findUserById(id: string): Promise<User | null> {
   return await prisma.user.findUnique({
     where: { id },
   });
 }
 
-// ユーザーを作成または更新
+/**
+ * ユーザーを作成または更新
+ * 同じ Google ID でログインするユーザーは統合される
+ */
 export async function upsertUser(
   id: string,
   googleId: string,
   email: string,
   name: string | null,
-  picture: string | null,
+  picture: string | null
 ): Promise<User> {
   return await prisma.user.upsert({
     where: { googleId },
@@ -48,6 +60,7 @@ export async function upsertUser(
     create: {
       id,
       googleId,
+
       email,
       name,
       picture,

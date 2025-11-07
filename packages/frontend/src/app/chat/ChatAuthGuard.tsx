@@ -1,33 +1,17 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useAtomValue } from "jotai";
 import ChatContent from "./ChatContent";
+import { tokenAtom } from "./chatStore";
 
 /**
  * チャットページの認証ガード
- * トークンをチェックして、なければログインページへのリンクを表示
+ * Jotai の tokenAtom を使用してトークンをチェック
  */
 export function ChatAuthGuard() {
-  const initialized = useRef(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
-  const [token, setToken] = useState<string | null>(null);
+  const token = useAtomValue(tokenAtom);
 
-  useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-
-    const storedToken = localStorage.getItem("token");
-    setToken(storedToken);
-    setIsAuthenticated(!!storedToken);
-    setIsChecking(false);
-  }, []);
-
-  if (isChecking) {
-    return <div className="p-8">チェック中...</div>;
-  }
-
-  if (!isAuthenticated || !token) {
+  if (!token) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-8">
         <div className="text-center">

@@ -12,22 +12,29 @@ interface MockUser {
 export default function LoginPage() {
   const [mockUsers, setMockUsers] = useState<MockUser[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLoadUsers = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch("http://localhost:3001/api/mock-users");
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`);
+      }
       const data = await response.json();
       setMockUsers(data.users);
-    } catch (error) {
-      console.error("Failed to load mock users:", error);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "ユーザーの読み込みに失敗しました";
+      console.error("Failed to load mock users:", err);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogin = (userIndex: number) => {
-    // モックGoogle OAuthフローを開始
     window.location.href = `http://localhost:3001/auth/google?user_index=${userIndex}`;
   };
 
@@ -60,6 +67,12 @@ export default function LoginPage() {
           <h2 className="text-xl font-semibold mb-6 text-center text-gray-800 dark:text-gray-200">
             Googleでログイン
           </h2>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+            </div>
+          )}
 
           {mockUsers.length === 0 ? (
             <button

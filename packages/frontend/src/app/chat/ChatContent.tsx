@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
+import { useAtom } from "jotai";
 import useWebSocket from "react-use-websocket";
-
-interface ChatMessage {
-  type: string;
-  user?: string;
-  text?: string;
-  timestamp?: string;
-}
+import {
+  currentUserAtom,
+  tokenAtom,
+  messagesAtom,
+  authenticatedAtom,
+  chatInputAtom,
+} from "./chatStore";
 
 interface ChatContentProps {
   token: string;
@@ -16,20 +17,23 @@ interface ChatContentProps {
 }
 
 export default function ChatContent({ token, initialUser }: ChatContentProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [authenticated, setAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ name: string } | null>(
-    initialUser
-  );
+  const [currentUser, setCurrentUser] = useAtom(currentUserAtom);
+  const [, setToken] = useAtom(tokenAtom);
+  const [messages, setMessages] = useAtom(messagesAtom);
+  const [authenticated, setAuthenticated] = useAtom(authenticatedAtom);
+  const [input, setInput] = useAtom(chatInputAtom);
 
-  // WebSocket接続
+  /**
+   * WebSocket コネクション
+   * token が存在する場合のみ接続
+   * 認証後にメッセージ受信、認証エラー時にはログイン画面へリダイレクト
+   * 接続断時は自動再接続 (最大10回、3秒間隔)
+   */
   const { sendJsonMessage, readyState } = useWebSocket(
     token ? "ws://localhost:3001/ws" : null,
     {
       onOpen: () => {
         console.log("WebSocket connected");
-        // 認証トークンを送信
         if (token) {
           sendJsonMessage({ type: "auth", token });
         }
@@ -47,13 +51,13 @@ export default function ChatContent({ token, initialUser }: ChatContentProps) {
             setMessages((prev) => [...prev, data]);
           } else if (data.type === "error") {
             console.error("WebSocket error:", data.message);
+            // トークン無効または未認証時はログインページへ
             if (
               data.message.includes("token") ||
               data.message.includes("authenticated")
             ) {
-              localStorage.removeItem("token");
-              localStorage.removeItem("user");
-              // ページをリロードしてログイン画面へ戻す
+              setToken(null);
+              setCurrentUser(null);
               window.location.href = "/login";
             }
           }
@@ -72,7 +76,7 @@ export default function ChatContent({ token, initialUser }: ChatContentProps) {
       sendJsonMessage({ type: "message", text: input });
       setInput("");
     }
-  }, [readyState, authenticated, input, sendJsonMessage]);
+  }, [readyState, authenticated, input, sendJsonMessage, setInput]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -80,9 +84,16 @@ export default function ChatContent({ token, initialUser }: ChatContentProps) {
     }
   };
 
+  /**
+   * ログアウト処理
+   * Jotai の状態をクリア (自動的に localStorage からも削除)
+   * ログインページへリダイレクト
+   */
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    setToken(null);
+    setCurrentUser(null);
+    setMessages([]);
+    setAuthenticated(false);
     window.location.href = "/login";
   };
 

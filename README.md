@@ -21,6 +21,7 @@ WebSocket によるリアルタイムチャットサービスの学習用プロ�
 │   ├── frontend/    # Next.js SSG フロントエンド
 │   └── backend/     # Hono WebSocket バックエンド
 ├── CONTRIBUTING.md  # 開発ガイド
+├── AGENTS.md        # CONTRIBUTING.md へのシンボリックリンク
 ├── package.json
 ├── pnpm-workspace.yaml
 └── README.md
@@ -30,7 +31,7 @@ WebSocket によるリアルタイムチャットサービスの学習用プロ�
 
 このプロジェクトの開発原則、アーキテクチャ、コード規約については **[CONTRIBUTING.md](./CONTRIBUTING.md)** をご覧ください。
 
-特に以下の内容が記載されています：
+特に以下の内容が記載されています:
 
 - **開発方針**: Suspense の活用、副作用の最小化、SSG 互換性
 - **アーキテクチャ**: フロントエンド・バックエンドの構成図
@@ -54,10 +55,10 @@ npm install -g pnpm
 # 依存関係をインストール
 pnpm install
 
-# 環境変数ファイルをコピー（初回のみ）
+# 環境変数ファイルをコピー (初回のみ)
 cp packages/backend/.env.example packages/backend/.env
 
-# Prisma マイグレーションを実行（初回のみ）
+# Prisma マイグレーションを実行 (初回のみ)
 cd packages/backend
 pnpm prisma migrate dev
 cd ../..
@@ -93,7 +94,7 @@ pnpm run dev:backend
 pnpm run build
 ```
 
-### フロントエンドをビルド（SSG）
+### フロントエンドをビルド (SSG)
 
 ```bash
 pnpm run build:frontend
@@ -115,7 +116,7 @@ JavaScript ファイルは `packages/backend/dist/` に出力されます。
 
 - **モック Google OAuth**: 実際の Google API を使用せず、モックサーバーで OAuth フローを再現
 - **テストユーザー**: 3 人のテストユーザーが用意されており、ログイン時に選択可能
-- **JWT トークン**: セッション管理に JWT を使用（有効期限 7 日間）
+- **JWT トークン**: セッション管理に JWT を使用 (有効期限 7 日間)
 - **SQLite データベース**: ユーザー情報を Prisma を通じて管理
 - **シームレスなログイン**: アカウント作成とログインが同じ操作で完了
 

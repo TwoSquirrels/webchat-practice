@@ -14,16 +14,22 @@ import {
 
 const app = new Hono();
 
-// CORS設定
+/**
+ * CORS 設定
+ * フロントエンド (localhost:3000) からのリクエストを許可
+ */
 app.use(
   "/*",
   cors({
     origin: ["http://localhost:3000"],
     credentials: true,
-  }),
+  })
 );
 
-// WebSocket接続を管理する配列（ユーザーIDとWSのマッピング）
+/**
+ * WebSocket クライアント管理
+ * 認証済みユーザーとコネクションのマッピング
+ */
 interface AuthenticatedWebSocket {
   ws: WebSocket;
   userId: string;
@@ -32,7 +38,6 @@ interface AuthenticatedWebSocket {
 
 const clients: AuthenticatedWebSocket[] = [];
 
-// WebSocketサポートを作成
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 app.get("/", (c) => {
@@ -47,22 +52,31 @@ app.get("/api/health", (c) => {
   return c.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// モックGoogleユーザーの一覧を取得
+/**
+ * GET /api/mock-users
+ * テストユーザー一覧を返す
+ */
 app.get("/api/mock-users", (c) => {
   return c.json({ users: getMockUsers() });
 });
 
-// モックGoogle OAuth認証開始
+/**
+ * GET /auth/google
+ * OAuth フロー開始
+ * 認証コード生成 → /auth/callback にリダイレクト
+ */
 app.get("/auth/google", (c) => {
   const userIndex = Number(c.req.query("user_index") || "0");
   const code = generateAuthCode(userIndex);
-
-  // フロントエンドのコールバックURLにリダイレクト
   const redirectUri = `http://localhost:3000/auth/callback?code=${code}`;
   return c.redirect(redirectUri);
 });
 
-// 認証コードをトークンに交換
+/**
+ * POST /auth/token
+ * 認証コードをトークンに交換
+ * コード: 一度だけ使用可能、15分で有効期限切れ
+ */
 app.post("/auth/token", async (c) => {
   const body = await c.req.json();
   const { code } = body;
@@ -71,23 +85,20 @@ app.post("/auth/token", async (c) => {
     return c.json({ error: "Code is required" }, 400);
   }
 
-  // 認証コードからユーザー情報を取得
   const googleUser = getUserByAuthCode(code);
   if (!googleUser) {
     return c.json({ error: "Invalid or expired code" }, 400);
   }
 
-  // ユーザーをデータベースに作成または更新
   const userId = uuidv4();
   const user = await upsertUser(
     userId,
     googleUser.id,
     googleUser.email,
     googleUser.name,
-    googleUser.picture,
+    googleUser.picture
   );
 
-  // JWTトークンを生成
   const token = generateToken(user.id, user.email);
 
   return c.json({
@@ -101,7 +112,10 @@ app.post("/auth/token", async (c) => {
   });
 });
 
-// ユーザー情報を取得
+/**
+ * GET /api/user
+ * Bearer トークンからユーザー情報を取得
+ */
 app.get("/api/user", async (c) => {
   const authHeader = c.req.header("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -128,7 +142,14 @@ app.get("/api/user", async (c) => {
   });
 });
 
-// WebSocketエンドポイント
+/**
+ * WS /ws
+ * リアルタイムチャット WebSocket
+ * 1. 接続後、auth メッセージでトークン検証
+ * 2. 認証成功後、クライアントリストに追加
+ * 3. message メッセージを全クライアントにブロードキャスト
+ * 4. 接続切断時はクライアントリストから削除
+ */
 app.get(
   "/ws",
   upgradeWebSocket(() => ({
@@ -141,12 +162,11 @@ app.get(
       try {
         const data = JSON.parse(message);
 
-        // 認証メッセージの処理
         if (data.type === "auth") {
           const payload = verifyToken(data.token);
           if (!payload) {
             ws.send(
-              JSON.stringify({ type: "error", message: "Invalid token" }),
+              JSON.stringify({ type: "error", message: "Invalid token" })
             );
             ws.close();
             return;
@@ -155,13 +175,13 @@ app.get(
           const user = await findUserById(payload.userId);
           if (!user) {
             ws.send(
-              JSON.stringify({ type: "error", message: "User not found" }),
+              JSON.stringify({ type: "error", message: "User not found" })
             );
             ws.close();
             return;
           }
 
-          // 認証成功、クライアントリストに追加
+          // 認証成功: clients に追加してメッセージ受信可能に
           if (ws.raw) {
             clients.push({
               ws: ws.raw,
@@ -174,22 +194,22 @@ app.get(
             JSON.stringify({
               type: "auth_success",
               user: { name: user.name || user.email },
-            }),
+            })
           );
           console.log(`User authenticated: ${user.email}`);
           return;
         }
 
-        // 認証済みかチェック
+        // 認証済みクライアントか確認
         const client = ws.raw ? clients.find((c) => c.ws === ws.raw) : null;
         if (!client) {
           ws.send(
-            JSON.stringify({ type: "error", message: "Not authenticated" }),
+            JSON.stringify({ type: "error", message: "Not authenticated" })
           );
           return;
         }
 
-        // チャットメッセージの処理
+        // メッセージをすべての認証済みクライアントにブロードキャスト
         if (data.type === "message") {
           const chatMessage = {
             type: "message",
@@ -198,7 +218,6 @@ app.get(
             timestamp: new Date().toISOString(),
           };
 
-          // すべての認証済みクライアントにメッセージをブロードキャスト
           clients.forEach((c) => {
             if (c.ws.readyState === WebSocket.OPEN) {
               c.ws.send(JSON.stringify(chatMessage));
@@ -208,13 +227,13 @@ app.get(
       } catch (error) {
         console.error("Error parsing message:", error);
         ws.send(
-          JSON.stringify({ type: "error", message: "Invalid message format" }),
+          JSON.stringify({ type: "error", message: "Invalid message format" })
         );
       }
     },
     onClose(_event, ws) {
       console.log("WebSocket connection closed");
-      // 接続が閉じられたらクライアントを削除
+      // クライアントリストから削除
       if (ws.raw) {
         const index = clients.findIndex((c) => c.ws === ws.raw);
         if (index > -1) {
@@ -225,13 +244,12 @@ app.get(
     onError(error) {
       console.error("WebSocket error:", error);
     },
-  })),
+  }))
 );
 
 const port = Number(process.env.PORT) || 3001;
 console.log(`Server is running on port ${port}`);
 
-// サーバーを起動してWebSocketをインジェクト
 const server = serve({
   fetch: app.fetch,
   port,

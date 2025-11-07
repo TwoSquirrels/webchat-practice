@@ -1,7 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
 
-// モックユーザーデータ
-// 実際のGoogle OAuthの代わりに使用
+/**
+ * モック Google ユーザー
+ * テスト用ユーザーデータ
+ */
 interface MockGoogleUser {
   id: string;
   email: string;
@@ -9,7 +11,10 @@ interface MockGoogleUser {
   picture: string;
 }
 
-// モックのGoogleユーザーのリスト
+/**
+ * テストユーザーリスト
+ * ログイン画面で選択可能
+ */
 const mockUsers: MockGoogleUser[] = [
   {
     id: "google_mock_1",
@@ -31,13 +36,17 @@ const mockUsers: MockGoogleUser[] = [
   },
 ];
 
-// 認証コードとユーザーのマッピング（一時的に保持）
+/**
+ * 認証コードの管理
+ * メモリ上に保持し、15分で自動失効
+ */
 const authCodes = new Map<string, MockGoogleUser>();
-
-// 認証コードの有効期限（15分）
 const AUTH_CODE_EXPIRY_MS = 15 * 60 * 1000;
 
-// 認証コードを生成してユーザーにマッピング
+/**
+ * 認証コードを生成
+ * OAuth フロー用。15分間有効。
+ */
 export function generateAuthCode(userIndex: number = 0): string {
   const code = uuidv4();
   const user = mockUsers[userIndex % mockUsers.length];
@@ -51,16 +60,21 @@ export function generateAuthCode(userIndex: number = 0): string {
   return code;
 }
 
-// 認証コードからユーザー情報を取得
+/**
+ * 認証コードからユーザー情報を取得 (コード消費)
+ * コード取得後は Map から削除される
+ */
 export function getUserByAuthCode(code: string): MockGoogleUser | undefined {
   const user = authCodes.get(code);
   if (user) {
-    authCodes.delete(code); // 使用済みコードを削除
+    authCodes.delete(code);
   }
   return user;
 }
 
-// モックユーザーのリストを取得（選択UI用）
+/**
+ * テストユーザーリストを取得
+ */
 export function getMockUsers(): MockGoogleUser[] {
   return mockUsers;
 }
