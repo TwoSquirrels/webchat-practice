@@ -4,7 +4,17 @@ import { createNodeWebSocket } from "@hono/node-ws";
 import { cors } from "hono/cors";
 import WebSocket from "ws";
 import { v4 as uuidv4 } from "uuid";
-import { findUserByGoogleId, findUserById, upsertUser } from "./db";
+import {
+  findUserByGoogleId,
+  findUserById,
+  upsertUser,
+  createRoom,
+  findRoomById,
+  joinRoom,
+  getUserRoomHistory,
+  getRoomMessages,
+  saveMessage,
+} from "./db";
 import { generateToken, verifyToken } from "./auth";
 import {
   generateAuthCode,
@@ -28,12 +38,13 @@ app.use(
 
 /**
  * WebSocket クライアント管理
- * 認証済みユーザーとコネクションのマッピング
+ * 認証済みユーザーとコネクションのマッピング (ルームIDも含む)
  */
 interface AuthenticatedWebSocket {
   ws: WebSocket;
   userId: string;
   userName: string;
+  roomId?: string;
 }
 
 const clients: AuthenticatedWebSocket[] = [];
@@ -143,12 +154,132 @@ app.get("/api/user", async (c) => {
 });
 
 /**
+ * POST /api/rooms
+ * 新しいルームを作成 (UUID を roomId として使用)
+ */
+app.post("/api/rooms", async (c) => {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const token = authHeader.substring(7);
+  const payload = verifyToken(token);
+
+  if (!payload) {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+
+  const roomId = uuidv4();
+  const room = await createRoom(roomId);
+
+  return c.json({ room: { id: room.id, createdAt: room.createdAt } });
+});
+
+/**
+ * POST /api/rooms/:roomId/join
+ * ルームに参加
+ */
+app.post("/api/rooms/:roomId/join", async (c) => {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const token = authHeader.substring(7);
+  const payload = verifyToken(token);
+
+  if (!payload) {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+
+  const roomId = c.req.param("roomId");
+
+  // ルームが存在するか確認、なければ作成
+  let room = await findRoomById(roomId);
+  if (!room) {
+    room = await createRoom(roomId);
+  }
+
+  const participantId = uuidv4();
+  const participant = await joinRoom(participantId, roomId, payload.userId);
+
+  return c.json({
+    room: { id: room.id, createdAt: room.createdAt },
+    participant: {
+      joinedAt: participant.joinedAt,
+      lastAccessAt: participant.lastAccessAt,
+    },
+  });
+});
+
+/**
+ * GET /api/rooms/history
+ * ユーザーのルーム参加履歴を取得
+ */
+app.get("/api/rooms/history", async (c) => {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const token = authHeader.substring(7);
+  const payload = verifyToken(token);
+
+  if (!payload) {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+
+  const history = await getUserRoomHistory(payload.userId);
+
+  return c.json({
+    rooms: history.map((h) => ({
+      id: h.room.id,
+      joinedAt: h.joinedAt,
+      lastAccessAt: h.lastAccessAt,
+      createdAt: h.room.createdAt,
+    })),
+  });
+});
+
+/**
+ * GET /api/rooms/:roomId/messages
+ * ルームのメッセージ履歴を取得
+ */
+app.get("/api/rooms/:roomId/messages", async (c) => {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const token = authHeader.substring(7);
+  const payload = verifyToken(token);
+
+  if (!payload) {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+
+  const roomId = c.req.param("roomId");
+  const messages = await getRoomMessages(roomId);
+
+  return c.json({
+    messages: messages.map((m) => ({
+      id: m.id,
+      text: m.text,
+      user: m.user.name || m.user.email,
+      timestamp: m.createdAt.toISOString(),
+    })),
+  });
+});
+
+/**
  * WS /ws
- * リアルタイムチャット WebSocket
+ * リアルタイムチャット WebSocket (ルーム機能付き)
  * 1. 接続後、auth メッセージでトークン検証
  * 2. 認証成功後、クライアントリストに追加
- * 3. message メッセージを全クライアントにブロードキャスト
- * 4. 接続切断時はクライアントリストから削除
+ * 3. join_room メッセージでルームに参加
+ * 4. message メッセージを同じルームのクライアントにブロードキャスト
+ * 5. 接続切断時はクライアントリストから削除
  */
 app.get(
   "/ws",
@@ -209,17 +340,83 @@ app.get(
           return;
         }
 
-        // メッセージをすべての認証済みクライアントにブロードキャスト
+        // ルームに参加
+        if (data.type === "join_room") {
+          const roomId = data.roomId;
+          if (!roomId) {
+            ws.send(
+              JSON.stringify({ type: "error", message: "Room ID is required" })
+            );
+            return;
+          }
+
+          // ルームが存在するか確認、なければ作成
+          let room = await findRoomById(roomId);
+          if (!room) {
+            room = await createRoom(roomId);
+          }
+
+          // クライアントにルームIDを設定
+          client.roomId = roomId;
+
+          // ルームに参加記録
+          const participantId = uuidv4();
+          await joinRoom(participantId, roomId, client.userId);
+
+          // ルームのメッセージ履歴を取得して送信
+          const messages = await getRoomMessages(roomId);
+
+          ws.send(
+            JSON.stringify({
+              type: "room_joined",
+              roomId: roomId,
+              messages: messages.map((m) => ({
+                type: "message",
+                user: m.user.name || m.user.email,
+                text: m.text,
+                timestamp: m.createdAt.toISOString(),
+              })),
+            })
+          );
+          console.log(`User ${client.userName} joined room ${roomId}`);
+          return;
+        }
+
+        // メッセージを同じルームの認証済みクライアントにブロードキャスト
         if (data.type === "message") {
+          if (!client.roomId) {
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                message: "Not in a room. Please join a room first.",
+              })
+            );
+            return;
+          }
+
+          const timestamp = new Date();
           const chatMessage = {
             type: "message",
             user: client.userName,
             text: data.text,
-            timestamp: new Date().toISOString(),
+            timestamp: timestamp.toISOString(),
           };
 
+          // データベースにメッセージを保存
+          const messageId = uuidv4();
+          await saveMessage(
+            messageId,
+            client.roomId,
+            client.userId,
+            data.text
+          );
+
+          // 同じルームのクライアントにブロードキャスト
           clients.forEach((c) => {
-            if (c.ws.readyState === WebSocket.OPEN) {
+            if (
+              c.ws.readyState === WebSocket.OPEN &&
+              c.roomId === client.roomId
+            ) {
               c.ws.send(JSON.stringify(chatMessage));
             }
           });

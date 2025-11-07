@@ -11,14 +11,53 @@ datasource db {
 }
 
 model User {
-  id            String   @id
-  googleId      String   @unique @map("google_id")
+  id            String             @id
+  googleId      String             @unique @map("google_id")
   email         String
   name          String?
   picture       String?
-  createdAt     DateTime @default(now()) @map("created_at")
-  lastLoginAt   DateTime @default(now()) @map("last_login_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  lastLoginAt   DateTime           @default(now()) @map("last_login_at")
+  messages      Message[]
+  participants  RoomParticipant[]
 
   @@index([googleId])
   @@map("users")
+}
+
+model Room {
+  id           String             @id
+  createdAt    DateTime           @default(now()) @map("created_at")
+  messages     Message[]
+  participants RoomParticipant[]
+
+  @@map("rooms")
+}
+
+model Message {
+  id        String   @id
+  roomId    String   @map("room_id")
+  userId    String   @map("user_id")
+  text      String
+  createdAt DateTime @default(now()) @map("created_at")
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([userId])
+  @@map("messages")
+}
+
+model RoomParticipant {
+  id           String   @id
+  roomId       String   @map("room_id")
+  userId       String   @map("user_id")
+  joinedAt     DateTime @default(now()) @map("joined_at")
+  lastAccessAt DateTime @default(now()) @map("last_access_at")
+  room         Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
+  @@map("room_participants")
 }
