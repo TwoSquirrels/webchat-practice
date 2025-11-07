@@ -6,7 +6,7 @@ WebSocket によるチャットサービスの練習用
 
 - **Frontend**: Next.js + TypeScript + Tailwind CSS
 - **Backend**: Hono + TypeScript
-- **Database**: SQLite (better-sqlite3)
+- **Database**: SQLite (Prisma)
 - **Auth**: JWT + Mock Google OAuth
 - **WebSocket**: @hono/node-ws
 - **Package Manager**: pnpm workspaces
@@ -39,9 +39,10 @@ npm install -g pnpm
 # 依存関係をインストール
 pnpm install
 
-# better-sqlite3 のビルドスクリプトを承認
-pnpm approve-builds
-# (スペースキーで better-sqlite3 を選択し、Enter を押し、y を入力して承認)
+# Prisma マイグレーションを実行（初回のみ）
+cd packages/backend
+npx prisma migrate dev
+cd ../..
 ```
 
 ## 開発
@@ -130,20 +131,43 @@ pnpm run build:backend
 
 ## データベース
 
-SQLite データベースファイル (`chat.db`) はバックエンドのルートディレクトリに作成されます。
+このプロジェクトは **Prisma** を使用して SQLite データベースを管理しています。
+
+### データベースファイル
+
+- データベースファイルは `packages/backend/prisma/chat.db` に作成されます
+- マイグレーションファイルは `packages/backend/prisma/migrations/` に保存されます
+
+### Prisma コマンド
+
+```bash
+cd packages/backend
+
+# Prisma Client を生成
+pnpm run prisma:generate
+
+# マイグレーションを作成・適用
+pnpm run prisma:migrate
+
+# Prisma Studio でデータベースを確認
+pnpm run prisma:studio
+```
 
 ### スキーマ
 
-```sql
-CREATE TABLE users (
-  id TEXT PRIMARY KEY,
-  google_id TEXT UNIQUE NOT NULL,
-  email TEXT NOT NULL,
-  name TEXT,
-  picture TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  last_login_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+```prisma
+model User {
+  id            String   @id
+  googleId      String   @unique @map("google_id")
+  email         String
+  name          String?
+  picture       String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  lastLoginAt   DateTime @default(now()) @map("last_login_at")
+
+  @@index([googleId])
+  @@map("users")
+}
 ```
 
 ## 今後の予定

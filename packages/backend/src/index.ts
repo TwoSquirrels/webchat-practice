@@ -76,7 +76,7 @@ app.post("/auth/token", async (c) => {
 
   // ユーザーをデータベースに作成または更新
   const userId = uuidv4();
-  const user = upsertUser(
+  const user = await upsertUser(
     userId,
     googleUser.id,
     googleUser.email,
@@ -112,7 +112,7 @@ app.get("/api/user", async (c) => {
     return c.json({ error: "Invalid token" }, 401);
   }
 
-  const user = findUserById(payload.userId);
+  const user = await findUserById(payload.userId);
   if (!user) {
     return c.json({ error: "User not found" }, 404);
   }
@@ -132,7 +132,7 @@ app.get(
     onOpen(_event, ws) {
       console.log("WebSocket connection opened (pending authentication)");
     },
-    onMessage(event, ws) {
+    async onMessage(event, ws) {
       const message = event.data.toString();
       
       try {
@@ -147,7 +147,7 @@ app.get(
             return;
           }
 
-          const user = findUserById(payload.userId);
+          const user = await findUserById(payload.userId);
           if (!user) {
             ws.send(JSON.stringify({ type: "error", message: "User not found" }));
             ws.close();

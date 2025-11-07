@@ -1,66 +1,58 @@
-import Database from "better-sqlite3";
-import path from "path";
+import { PrismaClient } from "@prisma/client";
 
-// データベースファイルのパス
-const dbPath = path.join(process.cwd(), "chat.db");
-const db = new Database(dbPath);
-
-// テーブルの作成
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    google_id TEXT UNIQUE NOT NULL,
-    email TEXT NOT NULL,
-    name TEXT,
-    picture TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    last_login_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
-`);
+// Prisma Clientのシングルトンインスタンス
+const prisma = new PrismaClient();
 
 export interface User {
   id: string;
-  google_id: string;
+  googleId: string;
   email: string;
   name: string | null;
   picture: string | null;
-  created_at: string;
-  last_login_at: string;
+  createdAt: Date;
+  lastLoginAt: Date;
 }
 
 // ユーザーをGoogle IDで検索
-export function findUserByGoogleId(googleId: string): User | undefined {
-  const stmt = db.prepare("SELECT * FROM users WHERE google_id = ?");
-  return stmt.get(googleId) as User | undefined;
+export async function findUserByGoogleId(
+  googleId: string,
+): Promise<User | null> {
+  return await prisma.user.findUnique({
+    where: { googleId },
+  });
 }
 
 // ユーザーをIDで検索
-export function findUserById(id: string): User | undefined {
-  const stmt = db.prepare("SELECT * FROM users WHERE id = ?");
-  return stmt.get(id) as User | undefined;
+export async function findUserById(id: string): Promise<User | null> {
+  return await prisma.user.findUnique({
+    where: { id },
+  });
 }
 
 // ユーザーを作成または更新
-export function upsertUser(
+export async function upsertUser(
   id: string,
   googleId: string,
   email: string,
   name: string | null,
   picture: string | null,
-): User {
-  const stmt = db.prepare(`
-    INSERT INTO users (id, google_id, email, name, picture, last_login_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
-    ON CONFLICT(google_id) DO UPDATE SET
-      email = excluded.email,
-      name = excluded.name,
-      picture = excluded.picture,
-      last_login_at = datetime('now')
-    RETURNING *
-  `);
-  return stmt.get(id, googleId, email, name, picture) as User;
+): Promise<User> {
+  return await prisma.user.upsert({
+    where: { googleId },
+    update: {
+      email,
+      name,
+      picture,
+      lastLoginAt: new Date(),
+    },
+    create: {
+      id,
+      googleId,
+      email,
+      name,
+      picture,
+    },
+  });
 }
 
-export default db;
+export default prisma;
