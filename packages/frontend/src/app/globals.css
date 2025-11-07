@@ -2,6 +2,14 @@
 
 @import "tailwindcss";
 
+:root {
+  --header-height: 120px;
+  --page-padding: 16px;
+  --chat-max-height: calc(
+    100vh - var(--header-height) - var(--page-padding) * 2
+  );
+}
+
 html {
   font-family: "Inter", sans-serif;
 }
