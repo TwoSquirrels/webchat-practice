@@ -115,8 +115,8 @@ export default function ChatPage() {
   }
 
   return (
-    <main className="min-h-screen p-4">
-      <div className="max-w-4xl mx-auto">
+    <main className="min-h-screen p-4 flex flex-col">
+      <div className="max-w-4xl mx-auto flex-1 flex flex-col">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -145,7 +145,7 @@ export default function ChatPage() {
         </div>
 
         {/* チャットUI */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden flex-1 flex flex-col">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
               チャットルーム
@@ -162,7 +162,7 @@ export default function ChatPage() {
             )}
           </div>
 
-          <div className="h-96 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-900/50">
+          <div className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-900/50">
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
                 <div className="text-center">
@@ -235,7 +235,7 @@ export default function ChatPage() {
             )}
           </div>
 
-          <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
             <div className="flex gap-3">
               <input
                 type="text"
