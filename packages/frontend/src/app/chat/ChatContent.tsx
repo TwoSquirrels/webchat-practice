@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useAtom } from "jotai";
 import useWebSocket from "react-use-websocket";
 import {
@@ -9,7 +9,11 @@ import {
   messagesAtom,
   authenticatedAtom,
   chatInputAtom,
+  currentRoomIdAtom,
+  roomJoinedAtom,
+  roomHistoryAtom,
 } from "./chatStore";
+import RoomSelector from "./RoomSelector";
 
 interface ChatContentProps {
   token: string;
@@ -21,12 +25,16 @@ export default function ChatContent({ token, initialUser }: ChatContentProps) {
   const [, setToken] = useAtom(tokenAtom);
   const [messages, setMessages] = useAtom(messagesAtom);
   const [authenticated, setAuthenticated] = useAtom(authenticatedAtom);
+  const [roomJoined, setRoomJoined] = useAtom(roomJoinedAtom);
   const [input, setInput] = useAtom(chatInputAtom);
+  const [currentRoomId, setCurrentRoomId] = useAtom(currentRoomIdAtom);
+  const [roomHistory, setRoomHistory] = useAtom(roomHistoryAtom);
+  const [showRoomSelector, setShowRoomSelector] = useState(false);
 
   /**
    * WebSocket コネクション
    * token が存在する場合のみ接続
-   * 認証後にメッセージ受信、認証エラー時にはログイン画面へリダイレクト
+   * 認証後にルームに参加、メッセージ受信
    * 接続断時は自動再接続 (最大10回、3秒間隔)
    */
   const { sendJsonMessage, readyState } = useWebSocket(
@@ -47,6 +55,17 @@ export default function ChatContent({ token, initialUser }: ChatContentProps) {
             if (data.user?.name) {
               setCurrentUser({ name: data.user.name });
             }
+            // 認証成功後、保存されているルームIDがあれば自動参加
+            if (currentRoomId) {
+              sendJsonMessage({ type: "join_room", roomId: currentRoomId });
+            }
+          } else if (data.type === "room_joined") {
+            setRoomJoined(true);
+            // メッセージ履歴を設定
+            if (data.messages && Array.isArray(data.messages)) {
+              setMessages(data.messages);
+            }
+            console.log(`Joined room: ${data.roomId}`);
           } else if (data.type === "message") {
             setMessages((prev) => [...prev, data]);
           } else if (data.type === "error") {
@@ -71,12 +90,46 @@ export default function ChatContent({ token, initialUser }: ChatContentProps) {
     }
   );
 
+  /**
+   * ルーム履歴を取得
+   */
+  const fetchRoomHistory = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const response = await fetch("http://localhost:3001/api/rooms/history", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setRoomHistory(data.rooms || []);
+    } catch (err) {
+      console.error("Failed to fetch room history:", err);
+    }
+  }, [token, setRoomHistory]);
+
+  // コンポーネントマウント時にルーム履歴を取得
+  useEffect(() => {
+    fetchRoomHistory();
+  }, [fetchRoomHistory]);
+
   const sendMessage = useCallback(() => {
-    if (readyState === WebSocket.OPEN && authenticated && input.trim()) {
+    if (
+      readyState === WebSocket.OPEN &&
+      authenticated &&
+      roomJoined &&
+      input.trim()
+    ) {
       sendJsonMessage({ type: "message", text: input });
       setInput("");
     }
-  }, [readyState, authenticated, input, sendJsonMessage, setInput]);
+  }, [readyState, authenticated, roomJoined, input, sendJsonMessage, setInput]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -94,8 +147,48 @@ export default function ChatContent({ token, initialUser }: ChatContentProps) {
     setCurrentUser(null);
     setMessages([]);
     setAuthenticated(false);
+    setRoomJoined(false);
+    setCurrentRoomId(null);
     window.location.href = "/login";
   };
+
+  /**
+   * ルーム選択処理
+   */
+  const handleRoomSelected = useCallback(
+    (roomId: string) => {
+      setCurrentRoomId(roomId);
+      setMessages([]);
+      setRoomJoined(false);
+      setShowRoomSelector(false);
+
+      // WebSocket で認証済みならルームに参加
+      if (authenticated && readyState === WebSocket.OPEN) {
+        sendJsonMessage({ type: "join_room", roomId });
+      }
+    },
+    [
+      setCurrentRoomId,
+      setMessages,
+      setRoomJoined,
+      authenticated,
+      readyState,
+      sendJsonMessage,
+    ]
+  );
+
+  /**
+   * ルーム変更
+   */
+  const handleChangeRoom = () => {
+    setShowRoomSelector(true);
+    setRoomJoined(false);
+  };
+
+  // ルームが選択されていない場合はルーム選択画面を表示
+  if (!currentRoomId || showRoomSelector) {
+    return <RoomSelector onRoomSelected={handleRoomSelected} />;
+  }
 
   return (
     <main className="min-h-screen p-4 flex flex-col">
@@ -108,6 +201,9 @@ export default function ChatContent({ token, initialUser }: ChatContentProps) {
             <p className="text-gray-600 dark:text-gray-400">
               リアルタイムチャット
             </p>
+            <p className="text-xs font-mono text-gray-500 dark:text-gray-500 mt-1">
+              Room: {currentRoomId}
+            </p>
           </div>
           <div className="flex items-center gap-4">
             {currentUser && (
@@ -118,6 +214,12 @@ export default function ChatContent({ token, initialUser }: ChatContentProps) {
                 <span>ログイン中: {currentUser.name}</span>
               </div>
             )}
+            <button
+              onClick={handleChangeRoom}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+            >
+              ルーム変更
+            </button>
             <button
               onClick={handleLogout}
               className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
@@ -142,6 +244,16 @@ export default function ChatContent({ token, initialUser }: ChatContentProps) {
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-500 mr-2"></div>
                   <span className="text-yellow-800 dark:text-yellow-200">
                     認証中...
+                  </span>
+                </div>
+              </div>
+            )}
+            {authenticated && !roomJoined && (
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                  <span className="text-blue-800 dark:text-blue-200">
+                    ルームに参加中...
                   </span>
                 </div>
               </div>
@@ -228,15 +340,19 @@ export default function ChatContent({ token, initialUser }: ChatContentProps) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                disabled={!authenticated}
+                disabled={!authenticated || !roomJoined}
                 className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50"
                 placeholder={
-                  authenticated ? "メッセージを入力..." : "認証中..."
+                  !authenticated
+                    ? "認証中..."
+                    : !roomJoined
+                      ? "ルームに参加中..."
+                      : "メッセージを入力..."
                 }
               />
               <button
                 onClick={sendMessage}
-                disabled={!authenticated || !input.trim()}
+                disabled={!authenticated || !roomJoined || !input.trim()}
                 className="px-6 py-3 bg-linear-to-r from-blue-500 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2"
               >
                 <svg

@@ -18,6 +18,13 @@ interface ChatMessage {
   timestamp?: string;
 }
 
+interface Room {
+  id: string;
+  joinedAt: string;
+  lastAccessAt: string;
+  createdAt: string;
+}
+
 /**
  * JWT トークン
  * 認証後にバックエンドから取得し、自動的に localStorage に保存
@@ -31,6 +38,21 @@ export const tokenAtom = atomWithStorage<string | null>("token", null);
 export const currentUserAtom = atomWithStorage<User | null>("user", null);
 
 /**
+ * 現在のルームID
+ * ユーザーが参加しているルームのID
+ */
+export const currentRoomIdAtom = atomWithStorage<string | null>(
+  "currentRoomId",
+  null
+);
+
+/**
+ * ルーム参加履歴
+ * ユーザーが参加したことのあるルームのリスト
+ */
+export const roomHistoryAtom = atomWithStorage<Room[]>("roomHistory", []);
+
+/**
  * チャットメッセージ履歴
  * セッション中のみ保持 (メモリに存在)
  */
@@ -40,6 +62,11 @@ export const messagesAtom = atom<ChatMessage[]>([]);
  * WebSocket 認証状態
  */
 export const authenticatedAtom = atom(false);
+
+/**
+ * ルーム参加状態
+ */
+export const roomJoinedAtom = atom(false);
 
 /**
  * チャット入力フィールドの現在値
