@@ -271,48 +271,6 @@ export default function ChatPage() {
             </div>
           </div>
         </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mt-6">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">
-            技術スタック
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                <span className="text-blue-600 dark:text-blue-400 font-bold text-sm">
-                  N
-                </span>
-              </div>
-              <span className="text-sm">
-                Frontend: Next.js + TypeScript + Tailwind CSS
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                <span className="text-green-600 dark:text-green-400 font-bold text-sm">
-                  H
-                </span>
-              </div>
-              <span className="text-sm">Backend: Hono + TypeScript</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                <span className="text-purple-600 dark:text-purple-400 font-bold text-sm">
-                  S
-                </span>
-              </div>
-              <span className="text-sm">Database: SQLite (better-sqlite3)</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
-                <span className="text-red-600 dark:text-red-400 font-bold text-sm">
-                  W
-                </span>
-              </div>
-              <span className="text-sm">WebSocket: @hono/node-ws</span>
-            </div>
-          </div>
-        </div>
       </div>
     </main>
   );
