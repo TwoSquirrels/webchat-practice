@@ -1,46 +1,23 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
+import useWebSocket from "react-use-websocket";
 
 export default function Home() {
   const [messages, setMessages] = useState<string[]>([]);
   const [input, setInput] = useState("");
-  const wsRef = useRef<WebSocket | null>(null);
-
-  useEffect(() => {
-    // WebSocket接続
-    const ws = new WebSocket("ws://localhost:3001/ws");
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log("Connected to WebSocket");
-    };
-
-    ws.onmessage = (event) => {
-      const message = event.data;
-      setMessages((prev) => [...prev, message]);
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, []);
+  const { sendMessage: wsSendMessage, readyState } = useWebSocket(
+    "ws://localhost:3001/ws",
+    {
+      onMessage: (event) => {
+        setMessages((prev) => [...prev, event.data]);
+      },
+    },
+  );
 
   const sendMessage = () => {
-    if (
-      wsRef.current &&
-      wsRef.current.readyState === WebSocket.OPEN &&
-      input.trim()
-    ) {
-      wsRef.current.send(input);
+    if (readyState === WebSocket.OPEN && input.trim()) {
+      wsSendMessage(input);
       setInput("");
     }
   };
