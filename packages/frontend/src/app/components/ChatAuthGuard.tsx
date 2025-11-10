@@ -14,35 +14,25 @@ import { tokenAtom } from "../chatStore";
 export function ChatAuthGuard() {
   const token = useAtomValue(tokenAtom);
   const searchParams = useSearchParams();
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // コンポーネントマウント時に一度だけ実行
-    if (isInitialized) return;
+    // クライアント側でのみ実行
+    setIsReady(true);
+  }, []);
 
-    // localStorage から直接トークンをチェック
-    const storedToken = localStorage.getItem("token");
+  useEffect(() => {
+    if (!isReady) return;
 
-    if (!storedToken) {
-      // トークンがない場合はリダイレクト
+    // トークンがない場合はリダイレクト
+    if (!token) {
       const currentPath = window.location.pathname + window.location.search;
       window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-      return;
     }
+  }, [isReady, token]);
 
-    // URL ルーム ID がある場合は localStorage の currentRoomId をクリア
-    // これにより URL が優先される
-    const urlRoomId = searchParams.get("room");
-    if (urlRoomId) {
-      localStorage.removeItem("currentRoomId");
-    }
-
-    // トークンがある場合は初期化完了
-    setIsInitialized(true);
-  }, [isInitialized, searchParams]);
-
-  // 初期化が完了していない、またはトークンがない場合はローディング表示
-  if (!isInitialized || !token) {
+  // 初期化完了＆トークンがない場合はローディング表示
+  if (!isReady || !token) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-8">
         <div className="text-center">

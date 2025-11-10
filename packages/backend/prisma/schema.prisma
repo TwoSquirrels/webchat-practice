@@ -10,54 +10,85 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/**
+ * ユーザー
+ * Google OAuth で認証されたユーザー
+ */
 model User {
-  id            String             @id
+  id            String             @id @default(cuid())
   googleId      String             @unique @map("google_id")
-  email         String
+  email         String             @unique
   name          String?
   picture       String?
   createdAt     DateTime           @default(now()) @map("created_at")
-  lastLoginAt   DateTime           @default(now()) @map("last_login_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+  
+  // リレーション
   messages      Message[]
   participants  RoomParticipant[]
+  createdRooms  Room[]
 
   @@index([googleId])
   @@map("users")
 }
 
+/**
+ * チャットルーム
+ * ユーザーがメッセージをやり取りする場所
+ */
 model Room {
-  id           String             @id
+  id           String             @id @default(cuid())
+  creatorId    String             @map("creator_id")
+  creator      User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  
+  // リレーション
   messages     Message[]
   participants RoomParticipant[]
 
+  @@index([creatorId])
+  @@index([createdAt])
+  @@index([updatedAt])
   @@map("rooms")
 }
 
+/**
+ * チャットメッセージ
+ * ユーザーがルームに送信したメッセージ
+ */
 model Message {
-  id        String   @id
+  id        String   @id @default(cuid())
   roomId    String   @map("room_id")
   userId    String   @map("user_id")
   text      String
   createdAt DateTime @default(now()) @map("created_at")
+  
+  // リレーション
   room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([roomId])
+  @@index([roomId, createdAt])
   @@index([userId])
   @@map("messages")
 }
 
+/**
+ * ルーム参加者
+ * ユーザーがどのルームに参加しているか、いつアクセスしたかを追跡
+ */
 model RoomParticipant {
-  id           String   @id
+  id           String   @id @default(cuid())
   roomId       String   @map("room_id")
   userId       String   @map("user_id")
   joinedAt     DateTime @default(now()) @map("joined_at")
-  lastAccessAt DateTime @default(now()) @map("last_access_at")
+  lastAccessAt DateTime @default(now()) @updatedAt @map("last_access_at")
+  
+  // リレーション
   room         Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([roomId, userId])
-  @@index([userId])
+  @@index([userId, lastAccessAt])
   @@map("room_participants")
 }

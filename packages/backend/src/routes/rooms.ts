@@ -13,8 +13,9 @@ import { verifyAuthMiddleware, getAuthPayload } from "../middleware/auth";
 const roomsRouter = new Hono();
 
 roomsRouter.post("/api/rooms", verifyAuthMiddleware, async (c) => {
+  const payload = getAuthPayload(c);
   const roomId = uuidv4();
-  const room = await createRoom(roomId);
+  const room = await createRoom(roomId, payload.userId);
   return c.json({ room: { id: room.id, createdAt: room.createdAt } });
 });
 
@@ -68,7 +69,7 @@ roomsRouter.get(
         timestamp: m.createdAt.toISOString(),
       })),
     });
-  }
+  },
 );
 
 roomsRouter.get(
@@ -97,7 +98,7 @@ roomsRouter.get(
       joinedAt: participant?.joinedAt?.toISOString(),
       lastAccessAt: participant?.lastAccessAt?.toISOString(),
     });
-  }
+  },
 );
 
 export default roomsRouter;

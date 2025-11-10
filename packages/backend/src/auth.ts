@@ -9,11 +9,11 @@ const JWT_SECRET =
   (() => {
     if (process.env.NODE_ENV === "production") {
       throw new Error(
-        "JWT_SECRET environment variable is required in production"
+        "JWT_SECRET environment variable is required in production",
       );
     }
     console.warn(
-      "Warning: Using default JWT secret for development. Set JWT_SECRET environment variable for production."
+      "Warning: Using default JWT secret for development. Set JWT_SECRET environment variable for production.",
     );
     return "dev-secret-key-do-not-use-in-production";
   })();

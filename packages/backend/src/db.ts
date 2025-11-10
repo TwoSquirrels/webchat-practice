@@ -15,14 +15,14 @@ export interface User {
   name: string | null;
   picture: string | null;
   createdAt: Date;
-  lastLoginAt: Date;
+  updatedAt: Date;
 }
 
 /**
  * Google ID からユーザーを検索
  */
 export async function findUserByGoogleId(
-  googleId: string
+  googleId: string,
 ): Promise<User | null> {
   return await prisma.user.findUnique({
     where: { googleId },
@@ -47,7 +47,7 @@ export async function upsertUser(
   googleId: string,
   email: string,
   name: string | null,
-  picture: string | null
+  picture: string | null,
 ): Promise<User> {
   return await prisma.user.upsert({
     where: { googleId },
@@ -55,12 +55,10 @@ export async function upsertUser(
       email,
       name,
       picture,
-      lastLoginAt: new Date(),
     },
     create: {
       id,
       googleId,
-
       email,
       name,
       picture,
@@ -71,9 +69,12 @@ export async function upsertUser(
 /**
  * ルームを作成
  */
-export async function createRoom(roomId: string) {
+export async function createRoom(roomId: string, userId: string) {
   return await prisma.room.create({
-    data: { id: roomId },
+    data: {
+      id: roomId,
+      creatorId: userId,
+    },
   });
 }
 
@@ -92,7 +93,7 @@ export async function findRoomById(roomId: string) {
 export async function joinRoom(
   participantId: string,
   roomId: string,
-  userId: string
+  userId: string,
 ) {
   return await prisma.roomParticipant.upsert({
     where: {
@@ -152,7 +153,7 @@ export async function saveMessage(
   messageId: string,
   roomId: string,
   userId: string,
-  text: string
+  text: string,
 ) {
   return await prisma.message.create({
     data: {

@@ -36,7 +36,7 @@ export function getAuthPayload(c: Context): AuthPayload {
   const payload = c.get("authPayload");
   if (!payload) {
     throw new Error(
-      "Auth payload not found. Ensure verifyAuthMiddleware is applied."
+      "Auth payload not found. Ensure verifyAuthMiddleware is applied.",
     );
   }
   return payload;

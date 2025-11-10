@@ -105,7 +105,7 @@ export function useChatSession({
       shouldReconnect: () => true,
       reconnectAttempts: 10,
       reconnectInterval: 3000,
-    }
+    },
   );
 
   const fetchRoomHistory = useCallback(async () => {
@@ -131,7 +131,7 @@ export function useChatSession({
         `http://localhost:3001/api/rooms/${urlRoomId}/status`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       if (!response.ok) {
         if (response.status === 404) {
@@ -148,7 +148,7 @@ export function useChatSession({
           {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` },
-          }
+          },
         );
         if (!joinResponse.ok) throw new Error("ルームへの参加に失敗しました");
       }
@@ -159,6 +159,7 @@ export function useChatSession({
       if (readyState === WebSocket.OPEN) {
         sendJsonMessage({ type: "join_room", roomId: urlRoomId });
       }
+      await fetchRoomHistory();
     } catch (err) {
       onUrlError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -174,6 +175,7 @@ export function useChatSession({
     setRoomJoined,
     onLoading,
     onUrlError,
+    fetchRoomHistory,
   ]);
 
   const sendMessage = useCallback(
@@ -182,7 +184,7 @@ export function useChatSession({
         sendJsonMessage({ type: "message", text });
       }
     },
-    [readyState, authenticated, sendJsonMessage]
+    [readyState, authenticated, sendJsonMessage],
   );
 
   const handleRoomSelected = useCallback(
@@ -203,7 +205,7 @@ export function useChatSession({
       readyState,
       sendJsonMessage,
       router,
-    ]
+    ],
   );
 
   const createRoom = useCallback(async () => {
@@ -242,7 +244,7 @@ export function useChatSession({
           {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` },
-          }
+          },
         );
         if (!response.ok) throw new Error("ルームへの参加に失敗しました");
         handleRoomSelected(roomId);
@@ -255,7 +257,7 @@ export function useChatSession({
         onLoading(false);
       }
     },
-    [token, handleRoomSelected, fetchRoomHistory, onLoading, onError]
+    [token, handleRoomSelected, fetchRoomHistory, onLoading, onError],
   );
 
   const handleLogout = useCallback(() => {

@@ -45,7 +45,7 @@ authRouter.post("/auth/token", async (c) => {
     googleUser.id,
     googleUser.email,
     googleUser.name,
-    googleUser.picture
+    googleUser.picture,
   );
 
   const token = generateToken(user.id, user.email);

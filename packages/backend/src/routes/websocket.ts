@@ -169,7 +169,7 @@ export function createWebSocketRoute(upgradeWebSocket: any, app: Hono) {
               messageId,
               client.roomId,
               client.userId,
-              data.text
+              data.text,
             );
 
             clients.forEach((c) => {
@@ -202,6 +202,6 @@ export function createWebSocketRoute(upgradeWebSocket: any, app: Hono) {
       onError(error: any) {
         console.error("WebSocket error:", error);
       },
-    }))
+    })),
   );
 }
