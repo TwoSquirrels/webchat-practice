@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface MockUser {
   id: string;
@@ -10,9 +11,19 @@ interface MockUser {
 }
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
   const [mockUsers, setMockUsers] = useState<MockUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    // リダイレクトパラメータを取得
+    const redirect = searchParams.get("redirect");
+    if (redirect) {
+      setRedirectPath(redirect);
+    }
+  }, [searchParams]);
 
   const handleLoadUsers = async () => {
     setLoading(true);
@@ -35,7 +46,14 @@ export default function LoginPage() {
   };
 
   const handleLogin = (userIndex: number) => {
-    window.location.href = `http://localhost:3001/auth/google?user_index=${userIndex}`;
+    // リダイレクト先をクエリパラメータとして渡す
+    const params = new URLSearchParams({
+      user_index: userIndex.toString(),
+    });
+    if (redirectPath) {
+      params.set("redirect", redirectPath);
+    }
+    window.location.href = `http://localhost:3001/auth/google?${params.toString()}`;
   };
 
   return (

@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 /**
  * Prisma Client シングルトンインスタンス
  */
-const prisma = new PrismaClient();
+export const prisma = new PrismaClient();
 
 /**
  * ユーザー情報
@@ -89,7 +89,11 @@ export async function findRoomById(roomId: string) {
 /**
  * ユーザーをルームに参加させる
  */
-export async function joinRoom(participantId: string, roomId: string, userId: string) {
+export async function joinRoom(
+  participantId: string,
+  roomId: string,
+  userId: string
+) {
   return await prisma.roomParticipant.upsert({
     where: {
       roomId_userId: { roomId, userId },
@@ -115,7 +119,7 @@ export async function getUserRoomHistory(userId: string) {
       room: true,
     },
     orderBy: {
-      lastAccessAt: "desc",
+      joinedAt: "desc",
     },
   });
 }

@@ -1,7 +1,7 @@
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useSetAtom } from "jotai";
-import { tokenAtom, currentUserAtom } from "@/app/chat/chatStore";
+import { tokenAtom, currentUserAtom } from "@/app/chatStore";
 
 interface UseCallbackAuthReturn {
   error: string | null;
@@ -17,6 +17,7 @@ interface UseCallbackAuthReturn {
 export function useCallbackAuth(): UseCallbackAuthReturn {
   const searchParams = useSearchParams();
   const code = searchParams.get("code");
+  const redirect = searchParams.get("redirect");
   const [error, setError] = useState<string | null>(null);
   const processedRef = useRef(false);
 
@@ -53,7 +54,9 @@ export function useCallbackAuth(): UseCallbackAuthReturn {
         setToken(data.token);
         setCurrentUser(data.user);
 
-        window.location.href = "/chat";
+        // リダイレクト先を決定 (デフォルトはルートページ)
+        const redirectTo = redirect || "/";
+        window.location.href = redirectTo;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.error("Authentication error:", message);
@@ -62,7 +65,7 @@ export function useCallbackAuth(): UseCallbackAuthReturn {
     };
 
     handleAuth();
-  }, [code, setToken, setCurrentUser]);
+  }, [code, redirect, setToken, setCurrentUser]);
 
   return { error };
 }

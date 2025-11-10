@@ -14,6 +14,7 @@ import {
   getUserRoomHistory,
   getRoomMessages,
   saveMessage,
+  prisma,
 } from "./db";
 import { generateToken, verifyToken } from "./auth";
 import {
@@ -78,8 +79,12 @@ app.get("/api/mock-users", (c) => {
  */
 app.get("/auth/google", (c) => {
   const userIndex = Number(c.req.query("user_index") || "0");
+  const redirect = c.req.query("redirect");
   const code = generateAuthCode(userIndex);
-  const redirectUri = `http://localhost:3000/auth/callback?code=${code}`;
+  let redirectUri = `http://localhost:3000/auth/callback?code=${code}`;
+  if (redirect) {
+    redirectUri += `&redirect=${encodeURIComponent(redirect)}`;
+  }
   return c.redirect(redirectUri);
 });
 
@@ -273,6 +278,48 @@ app.get("/api/rooms/:roomId/messages", async (c) => {
 });
 
 /**
+ * GET /api/rooms/:roomId/status
+ * ルームの状態とユーザーの参加状況を取得
+ */
+app.get("/api/rooms/:roomId/status", async (c) => {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const token = authHeader.substring(7);
+  const payload = verifyToken(token);
+
+  if (!payload) {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+
+  const roomId = c.req.param("roomId");
+
+  // ルームが存在するか確認
+  const room = await findRoomById(roomId);
+  if (!room) {
+    return c.json({ error: "Room not found" }, 404);
+  }
+
+  // ユーザーがこのルームに参加済みか確認
+  const participant = await prisma.roomParticipant.findFirst({
+    where: {
+      roomId: roomId,
+      userId: payload.userId,
+    },
+  });
+
+  return c.json({
+    roomId: room.id,
+    exists: true,
+    isJoined: !!participant,
+    joinedAt: participant?.joinedAt?.toISOString(),
+    lastAccessAt: participant?.lastAccessAt?.toISOString(),
+  });
+});
+
+/**
  * WS /ws
  * リアルタイムチャット WebSocket (ルーム機能付き)
  * 1. 接続後、auth メッセージでトークン検証
@@ -404,12 +451,7 @@ app.get(
 
           // データベースにメッセージを保存
           const messageId = uuidv4();
-          await saveMessage(
-            messageId,
-            client.roomId,
-            client.userId,
-            data.text
-          );
+          await saveMessage(messageId, client.roomId, client.userId, data.text);
 
           // 同じルームのクライアントにブロードキャスト
           clients.forEach((c) => {
