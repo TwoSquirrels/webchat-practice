@@ -1,48 +1,17 @@
 # コントリビューションガイド
 
-WebChat Practice は WebSocket によるリアルタイムチャットサービスの学習用プロジェクトです。このドキュメントでは、プロジェクトの設計原則とコード規約をまとめています。
+WebChat Practice は WebSocket でリアルタイムチャットを実現するプロジェクトです。ここでは、コードを書く際に大事なルールをまとめています。
 
-## 開発方針
+## 基本的な考え方
 
-このプロジェクトは以下の原則に従います。
+このプロジェクトでは以下を大切にしています：
 
-1. **Suspense を活用した設計** - ローディング状態を宣言的に管理
-2. **副作用の最小化** - useEffect は必要な場面 (OAuth コールバック、WebSocket 接続) のみで使用
-3. **SSG 互換性の確保** - すべてのページコンポーネント (`page.tsx`) を `"use client"` ディレクティブでクライアント化
-4. **型安全性** - TypeScript を活用し、インターフェースを明示的に定義
+1. **Suspense でローディングを管理** - ローディング状態を自然に扱う
+2. **useEffect は最小限に** - 外部システムとの連携が必要なときだけ使う（OAuth、WebSocket など）
+3. **SSG 対応** - ページコンポーネント（`page.tsx`）には必ず `"use client"` を付ける
+4. **TypeScript で型安全に** - 型を明示的に定義して、バグを減らす
 
-## アーキテクチャ
-
-フロントエンド側では `packages/frontend/src/` 下に以下の構成を維持します。
-
-```
-app/
-├── layout.tsx              # Root レイアウト (Server Component)
-├── page.tsx                # ホーム (Client Component)
-├── login/page.tsx          # ログインページ (Client Component)
-├── chat/
-│   ├── page.tsx            # Suspense ラッパー (Client Component)
-│   ├── ChatAuthGuard.tsx   # 認証チェック
-│   ├── ChatContent.tsx     # チャット本体 (WebSocket)
-│   ├── chatStore.ts        # Jotai ストア
-│   └── LoadingFallback.tsx # ローディング UI
-└── auth/callback/
-    ├── page.tsx            # OAuth コールバック (Client Component)
-    └── useCallbackAuth.ts  # OAuth 認証ロジック Hook
-```
-
-バックエンド側は `packages/backend/src/` で OAuth・WebSocket・JWT を管理します。
-
-認証フローは以下の通りです。
-
-1. ユーザーが `/login` にアクセス
-2. モックユーザーを選択して `/auth/google` にリダイレクト
-3. バックエンドが認証コードを生成して `/auth/callback` にリダイレクト
-4. フロントエンドが `/auth/token` にリクエスト
-5. バックエンドがトークンとユーザー情報を返す
-6. フロントエンドが localStorage に保存して `/chat` にリダイレクト
-
-## 環境構築
+## セットアップ
 
 ```bash
 pnpm install
@@ -52,82 +21,277 @@ cd ../..
 pnpm dev
 ```
 
+開発サーバーが起動したら、`http://localhost:3000` にアクセスしてください。
+
+## ファイル構成
+
+### フロントエンド
+
+`packages/frontend/src/app/` は以下の構成になっています：
+
+```
+app/
+├── layout.tsx              # ルートレイアウト
+├── page.tsx                # ホームページ
+├── login/
+│   ├── page.tsx            # ログインページ
+│   └── LoginContent.tsx    # ログイン処理
+├── auth/callback/
+│   ├── page.tsx            # OAuth コールバック
+│   └── useCallbackAuth.ts  # トークン取得ロジック
+├── components/             # 再利用できるコンポーネント
+├── hooks/
+│   └── useChatSession.ts   # 統合 Hook
+├── types/
+│   └── index.ts            # 型定義の集約
+└── chatStore.ts            # Jotai の状態管理
+```
+
+### バックエンド
+
+`packages/backend/src/` は以下の構成になっています：
+
+```
+src/
+├── index.ts                # ルーター設定
+├── routes/
+│   ├── auth.ts             # OAuth・認証処理
+│   ├── rooms.ts            # ルーム管理
+│   └── websocket.ts        # WebSocket 通信
+├── middleware/
+│   └── auth.ts             # 認証チェック
+├── types/
+│   └── index.ts            # WebSocket メッセージ型
+├── db.ts                   # データベース接続
+├── auth.ts                 # JWT 処理
+└── mockGoogle.ts           # モック OAuth サーバー
+```
+
+## 認証フロー
+
+1. ユーザーが `/login` にアクセス
+2. モックユーザーを選んでボタンを押す
+3. `/auth/google` にリダイレクト
+4. バックエンドが認証コードを生成して `/auth/callback` にリダイレクト
+5. フロントエンドが `/auth/token` にリクエスト
+6. バックエンドがトークンとユーザー情報を返す
+7. フロントエンドが localStorage に保存して `/chat` へ移動
+
 ## コード規約
 
-### ファイル命名規則
+### ファイル名
 
-- React コンポーネント: PascalCase (`ChatContent.tsx`)
-- ユーティリティ関数: camelCase (`helper.ts`)
-- ページコンポーネント: 小文字 (`app/chat/page.tsx`)
-
-### コメント戦略
-
-書くべきコメント: 非自明な設計判断や複雑なロジック、セキュリティやパフォーマンスの配慮、API エンドポイント・Hook の使用方法、SSG 環境での制約や工夫
-
-書かないコメント: 関数名が既に意図を表現している場合、型定義や制御フローが自明な場合、変数名が意図を明確に示している場合
-
-例えば、`const user = data.user;` といった自明なコメントは不要ですが、「SSG 環境では useEffect は必須、useRef で二重実行を防止 (React Strict Mode 対策)」といった理由と背景を説明するコメントは書くべきです。
-
-### コンポーネント構造
-
-SSG 環境では、`useSearchParams()` や `useRouter()` などのクライアント専用 API を使用するため、すべてのページコンポーネント (`page.tsx`) は `"use client"` ディレクティブを付与してください。
+- React コンポーネント: PascalCase （`ChatContent.tsx`）
+- 関数やユーティリティ: camelCase （`helper.ts`）
+- ページ: 小文字 （`page.tsx`）
 
 ### 型定義
 
+型は `app/types/index.ts` に集約します。
+
 ```tsx
-interface ChatMessage {
+export interface User {
+  name: string;
+  id?: string;
+  email?: string;
+}
+
+export interface Room {
+  id: string;
+  lastAccessAt: string;
+}
+
+export interface ChatMessage {
   type: string;
   user?: string;
   text?: string;
   timestamp?: string;
 }
+```
 
-interface ChatContentProps {
-  token: string;
-  initialUser: { name: string } | null;
+コンポーネントで使う際：
+
+```tsx
+import type { User, ChatMessage } from "../types";
+
+interface Props {
+  currentUser: User | null;
+  messages: ChatMessage[];
 }
 
-export default function ChatContent({ token, initialUser }: ChatContentProps) {
+export default function ChatContent({ currentUser, messages }: Props) {
   // ...
 }
 ```
 
-### エラーハンドリング
+### エラー処理
 
 ```tsx
 try {
   const response = await fetch("/api/endpoint");
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `HTTP Error: ${response.status}`);
+    throw new Error(`HTTP ${response.status}`);
   }
   return await response.json();
 } catch (err) {
   const message = err instanceof Error ? err.message : "Unknown error";
-  console.error("Error:", message);
+  console.error(message);
   setError(message);
 }
 ```
 
-## 重要な設計決定
+## 設計パターン
 
-### Jotai による localStorage 管理
+### WebSocket メッセージは Union 型で型安全にする
 
-`localStorage` の管理は **Jotai** の `atomWithStorage` を使用します。これにより、手動での `localStorage.getItem()` / `setItem()` が不要になり、React の状態管理として統一されます。
+WebSocket のメッセージは Union 型を使います。これでコンパイル時に無効なメッセージ型を検出できます。
+
+```tsx
+// types/index.ts - Backend
+export type IncomingMessage =
+  | { type: "auth"; token: string }
+  | { type: "join_room"; roomId: string }
+  | { type: "message"; text: string };
+
+export type OutgoingMessageType =
+  | { type: "auth_success"; user: { name: string } }
+  | { type: "room_joined"; roomId: string; messages: ChatMessage[] }
+  | { type: "message"; user: string; text: string; timestamp: string }
+  | { type: "error"; message: string };
+
+function parseMessage(data: unknown): IncomingMessage | null {
+  try {
+    const msg = JSON.parse(String(data));
+    if (msg.type === "auth" && typeof msg.token === "string") return msg;
+    if (msg.type === "join_room" && typeof msg.roomId === "string") return msg;
+    if (msg.type === "message" && typeof msg.text === "string") return msg;
+  } catch (e) {
+    console.error("Failed to parse message:", e);
+  }
+  return null;
+}
+```
+
+フロントエンドでも型を使ってメッセージを処理：
+
+```tsx
+const handleMessage = (message: OutgoingMessageType) => {
+  switch (message.type) {
+    case "auth_success":
+      setCurrentUser(message.user);
+      break;
+    case "message":
+      addMessage(message);
+      break;
+    case "error":
+      setError(message.message);
+      break;
+  }
+};
+```
+
+### 認証チェックはミドルウェアでまとめる
+
+バックエンドで認証チェックが何度も出てくるなら、ミドルウェアに統一します。
+
+```tsx
+// middleware/auth.ts
+export async function verifyAuthMiddleware(
+  c: Context,
+  next: () => Promise<void>,
+) {
+  const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const token = authHeader.substring(7);
+  const payload = verifyToken(token);
+  if (!payload) {
+    return c.json({ error: "Invalid token" }, 401);
+  }
+
+  c.set("authPayload", payload);
+  await next();
+}
+
+export function getAuthPayload(c: Context) {
+  return c.get("authPayload");
+}
+```
+
+ルートで使う時：
+
+```tsx
+// Bad: 毎回認証チェック
+router.post("/api/rooms", async (c) => {
+  const token = c.req.header("Authorization")?.substring(7);
+  if (!token) return c.json({ error: "Unauthorized" }, 401);
+  // route processing...
+});
+
+// Good: ミドルウェアに任せる
+router.post("/api/rooms", verifyAuthMiddleware, async (c) => {
+  const payload = getAuthPayload(c);
+  // route processing...
+});
+```
+
+### Jotai で localStorage を管理する
+
+`localStorage` は Jotai の `atomWithStorage` で管理します。`getItem()` / `setItem()` を直接使わない。
 
 ```tsx
 import { atomWithStorage } from "jotai/utils";
 
-// localStorage に自動保存される Atom
 export const tokenAtom = atomWithStorage<string | null>("token", null);
 export const currentUserAtom = atomWithStorage<User | null>("user", null);
 ```
 
-### `useEffect` の制限
+## useEffect と Suspense
 
-副作用を最小化し、コンポーネントのロジックをシンプルに保つために `useEffect` の使用を制限します。必要な場面 (OAuth コールバック、WebSocket 接続など) のみで使用してください。
+### useEffect は最小限に
 
-SSG 環境では `useSearchParams()` の結果がビルド時に確定しないため、OAuth コールバック処理では `useEffect` が必須です。`useRef` で二重実行を防止 (React Strict Mode 対策) してください。
+`useEffect` は外部システムとの連携が必要な時だけ使います。理由は、コードが読みやすくなり、実行速度も向上し、バグも減るから。
+
+**useEffect が不要なケース**
+
+データ変換やボタンクリック処理はイベントハンドラから直接行う。
+
+```tsx
+// Bad: useEffect でフィルタリング
+function UserList({ users, searchQuery }) {
+  const [filtered, setFiltered] = useState([]);
+  useEffect(() => {
+    setFiltered(users.filter((u) => u.name.includes(searchQuery)));
+  }, [users, searchQuery]);
+  return (
+    <ul>
+      {filtered.map((u) => (
+        <li>{u.name}</li>
+      ))}
+    </ul>
+  );
+}
+
+// Good: 直接レンダー内でフィルタリング
+function UserList({ users, searchQuery }) {
+  const filtered = users.filter((u) => u.name.includes(searchQuery));
+  return (
+    <ul>
+      {filtered.map((u) => (
+        <li>{u.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+**useEffect が必要な場合**
+
+URL パラメータの変化や WebSocket 接続など、状態に応じて自動的に副作用を実行する必要がある場合に使う。
+
+SSG 環境では `useSearchParams()` がビルド時に確定しないため、OAuth コールバック処理は `useEffect` で実装。`useRef` で二重実行を防ぐ。
 
 ```tsx
 import { useSearchParams } from "next/navigation";
@@ -141,21 +305,71 @@ export function useCallbackAuth() {
   useEffect(() => {
     if (processedRef.current) return;
     processedRef.current = true;
-    // 認証処理を実行
+
+    const handleAuth = async () => {
+      if (!code) return;
+      const response = await fetch("/api/auth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+    };
+    handleAuth();
   }, [code]);
 }
 ```
 
-### `Suspense` の活用
-
-ローディング状態を宣言的に管理します。
+通常の API 呼び出しはイベントハンドラから直接呼び出します。
 
 ```tsx
-<Suspense fallback={<Loading />}>
-  <AsyncComponent />
-</Suspense>
+// ログインボタンクリック時に直接 API を呼び出す
+async function handleLogin(userId: string) {
+  try {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    });
+    if (!response.ok) throw new Error("Login failed");
+    const data = await response.json();
+    setAtom(tokenAtom, data.token);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Unknown error");
+  }
+}
 ```
 
-### `localStorage` の使用
+**useEffect を使う前に**
 
-Client Component のみでアクセスしてください。ハイドレーション対策として `window` 存在チェックを実施してください。
+1. 本当に状態の変化に応じた自動実行が必要か？
+2. ユーザーイベントとして処理できないか？
+3. 依存配列は正しいか？
+
+### Suspense でローディングを管理
+
+SSG 環境では Browser API を使うコンポーネントを Suspense で包む。
+
+```tsx
+// page.tsx
+"use client";
+import { Suspense } from "react";
+import LoginContent from "./LoginContent";
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+// LoginContent.tsx
+("use client");
+import { useSearchParams } from "next/navigation";
+
+export default function LoginContent() {
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
+  // ...
+}
+```

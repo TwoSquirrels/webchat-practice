@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 /**
  * Prisma Client シングルトンインスタンス
  */
-const prisma = new PrismaClient();
+export const prisma = new PrismaClient();
 
 /**
  * ユーザー情報
@@ -15,14 +15,14 @@ export interface User {
   name: string | null;
   picture: string | null;
   createdAt: Date;
-  lastLoginAt: Date;
+  updatedAt: Date;
 }
 
 /**
  * Google ID からユーザーを検索
  */
 export async function findUserByGoogleId(
-  googleId: string
+  googleId: string,
 ): Promise<User | null> {
   return await prisma.user.findUnique({
     where: { googleId },
@@ -47,7 +47,7 @@ export async function upsertUser(
   googleId: string,
   email: string,
   name: string | null,
-  picture: string | null
+  picture: string | null,
 ): Promise<User> {
   return await prisma.user.upsert({
     where: { googleId },
@@ -55,15 +55,120 @@ export async function upsertUser(
       email,
       name,
       picture,
-      lastLoginAt: new Date(),
     },
     create: {
       id,
       googleId,
-
       email,
       name,
       picture,
+    },
+  });
+}
+
+/**
+ * ルームを作成
+ */
+export async function createRoom(roomId: string, userId: string) {
+  return await prisma.room.create({
+    data: {
+      id: roomId,
+      creatorId: userId,
+    },
+  });
+}
+
+/**
+ * ルームを取得
+ */
+export async function findRoomById(roomId: string) {
+  return await prisma.room.findUnique({
+    where: { id: roomId },
+  });
+}
+
+/**
+ * ユーザーをルームに参加させる
+ */
+export async function joinRoom(
+  participantId: string,
+  roomId: string,
+  userId: string,
+) {
+  return await prisma.roomParticipant.upsert({
+    where: {
+      roomId_userId: { roomId, userId },
+    },
+    update: {
+      lastAccessAt: new Date(),
+    },
+    create: {
+      id: participantId,
+      roomId,
+      userId,
+    },
+  });
+}
+
+/**
+ * ユーザーのルーム参加履歴を取得
+ */
+export async function getUserRoomHistory(userId: string) {
+  return await prisma.roomParticipant.findMany({
+    where: { userId },
+    include: {
+      room: true,
+    },
+    orderBy: {
+      joinedAt: "desc",
+    },
+  });
+}
+
+/**
+ * ルームのメッセージ履歴を取得
+ */
+export async function getRoomMessages(roomId: string, limit = 100) {
+  return await prisma.message.findMany({
+    where: { roomId },
+    include: {
+      user: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+    take: limit,
+  });
+}
+
+/**
+ * メッセージを保存
+ */
+export async function saveMessage(
+  messageId: string,
+  roomId: string,
+  userId: string,
+  text: string,
+) {
+  return await prisma.message.create({
+    data: {
+      id: messageId,
+      roomId,
+      userId,
+      text,
+    },
+    include: {
+      user: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
     },
   });
 }
