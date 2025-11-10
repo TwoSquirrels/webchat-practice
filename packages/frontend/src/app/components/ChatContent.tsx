@@ -59,18 +59,63 @@ export default function ChatContent({
             if (data.user?.name) {
               setCurrentUser({ name: data.user.name });
             }
-            if (currentRoomId) {
+            // ルーム履歴を取得
+            fetchRoomHistory();
+            // URL からのルーム参加を優先
+            if (urlRoomId && processingUrlRoom) {
+              // URL からのルーム参加を非同期で実行
+              (async () => {
+                setLoading(true);
+                setUrlError(null);
+                try {
+                  const response = await fetch(
+                    `http://localhost:3001/api/rooms/${urlRoomId}/status`,
+                    {
+                      headers: { Authorization: `Bearer ${token}` },
+                    }
+                  );
+                  if (!response.ok) {
+                    if (response.status === 404) {
+                      setUrlError("指定されたルームは存在しません");
+                      setProcessingUrlRoom(false);
+                      return;
+                    }
+                    throw new Error("ルーム情報の取得に失敗しました");
+                  }
+                  const statusData = await response.json();
+                  if (!statusData.isJoined) {
+                    const joinResponse = await fetch(
+                      `http://localhost:3001/api/rooms/${urlRoomId}/join`,
+                      {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token}` },
+                      }
+                    );
+                    if (!joinResponse.ok)
+                      throw new Error("ルームへの参加に失敗しました");
+                  }
+                  setCurrentRoomId(urlRoomId);
+                  setMessages([]);
+                  setRoomJoined(false);
+                  sendJsonMessage({ type: "join_room", roomId: urlRoomId });
+                  setProcessingUrlRoom(false);
+                } catch (err) {
+                  setUrlError(
+                    err instanceof Error ? err.message : "Unknown error"
+                  );
+                  setProcessingUrlRoom(false);
+                } finally {
+                  setLoading(false);
+                }
+              })();
+            } else if (currentRoomId) {
               sendJsonMessage({ type: "join_room", roomId: currentRoomId });
-            } else if (processingUrlRoom) {
-              // URL からのルーム参加を開始
-              processUrlRoom();
             }
           } else if (data.type === "room_joined") {
             setRoomJoined(true);
             if (data.messages && Array.isArray(data.messages)) {
               setMessages(data.messages);
             }
-            fetchRoomHistory();
           } else if (data.type === "message") {
             setMessages((prev) => [...prev, data]);
           } else if (data.type === "error") {
@@ -106,52 +151,6 @@ export default function ChatContent({
       console.error("Failed to fetch room history:", err);
     }
   }, [token, setRoomHistory]);
-
-  // URL からのルーム参加処理
-  const processUrlRoom = useCallback(async () => {
-    if (!urlRoomId || !token) return;
-    setLoading(true);
-    setUrlError(null);
-    try {
-      const response = await fetch(
-        `http://localhost:3001/api/rooms/${urlRoomId}/status`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!response.ok) {
-        if (response.status === 404) {
-          setUrlError("指定されたルームは存在しません");
-          setProcessingUrlRoom(false);
-          return;
-        }
-        throw new Error("ルーム情報の取得に失敗しました");
-      }
-      const data = await response.json();
-      if (!data.isJoined) {
-        const joinResponse = await fetch(
-          `http://localhost:3001/api/rooms/${urlRoomId}/join`,
-          {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (!joinResponse.ok) throw new Error("ルームへの参加に失敗しました");
-      }
-      setCurrentRoomId(urlRoomId);
-      setMessages([]);
-      setRoomJoined(false);
-      if (readyState === WebSocket.OPEN) {
-        sendJsonMessage({ type: "join_room", roomId: urlRoomId });
-      }
-      setProcessingUrlRoom(false);
-    } catch (err) {
-      setUrlError(err instanceof Error ? err.message : "Unknown error");
-      setProcessingUrlRoom(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [urlRoomId, token, readyState, sendJsonMessage]);
 
   const sendMessage = useCallback(() => {
     if (

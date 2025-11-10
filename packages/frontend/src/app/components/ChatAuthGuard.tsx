@@ -30,9 +30,16 @@ export function ChatAuthGuard() {
       return;
     }
 
+    // URL ルーム ID がある場合は localStorage の currentRoomId をクリア
+    // これにより URL が優先される
+    const urlRoomId = searchParams.get("room");
+    if (urlRoomId) {
+      localStorage.removeItem("currentRoomId");
+    }
+
     // トークンがある場合は初期化完了
     setIsInitialized(true);
-  }, [isInitialized]);
+  }, [isInitialized, searchParams]);
 
   // 初期化が完了していない、またはトークンがない場合はローディング表示
   if (!isInitialized || !token) {
